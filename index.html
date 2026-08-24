@@ -568,6 +568,15 @@ body.edit-mode .event-card-img .dl-badge{display:none}
           <button class="adm-btn adm-btn-red" onclick="applyEvents()">Save All Events</button>
           <span class="adm-saved" id="sv-events">&#x2713; Saved!</span>
         </div>
+        <div class="adm-card" style="margin-top:20px">
+          <div class="adm-card-title">Past Years Photos</div>
+          <div class="apanel-desc" style="margin-bottom:10px">Upload photos for the sliding "From Past Years" section on the Socials page. Students can click any photo there to download it.</div>
+          <div id="admGalleryList"></div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+            <button class="adm-btn adm-btn-dark" onclick="admUploadGalleryPhotos()">+ Add Photo(s)</button>
+            <span class="adm-saved" id="sv-gallery">&#x2713; Saved!</span>
+          </div>
+        </div>
       </div>
 
       <!-- CRM TOOLKIT TAB -->
@@ -1083,7 +1092,50 @@ var SEB_ALBUMS = [
 function saveSebData(){
   try {
     localStorage.setItem('seb_site_data', JSON.stringify({SEB_DATA: SEB_DATA, SEB_ALBUMS: SEB_ALBUMS}));
-  } catch(e) {}
+    return true;
+  } catch(e) {
+    console.error('saveSebData failed:', e);
+    showToast('⚠️ Storage is full — this last change was NOT saved. Delete some old photos/files to free up space, then try again.');
+    return false;
+  }
+}
+// Resizes/compresses an image file before we turn it into a data URL, so photo
+// uploads use dramatically less storage space (a full storage quota is one of
+// the top causes of "my upload didn't stick after refresh").
+function compressImageFile(file, callback, maxDim, quality){
+  maxDim = maxDim || 1280; quality = quality || 0.72;
+  if(!file.type || file.type.indexOf('image/')!==0){
+    // not an image (e.g. PDF) — just read as-is
+    var r=new FileReader();
+    r.onload=function(e){ callback(e.target.result); };
+    r.onerror=function(){ callback(null); };
+    r.readAsDataURL(file);
+    return;
+  }
+  var img=new Image();
+  var reader=new FileReader();
+  reader.onload=function(e){
+    img.onload=function(){
+      var w=img.width, h=img.height;
+      if(w>maxDim||h>maxDim){
+        if(w>h){ h=Math.round(h*(maxDim/w)); w=maxDim; }
+        else { w=Math.round(w*(maxDim/h)); h=maxDim; }
+      }
+      var canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      var ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      try {
+        callback(canvas.toDataURL('image/jpeg', quality));
+      } catch(err) {
+        callback(e.target.result); // fallback to original if canvas fails (e.g. tainted canvas)
+      }
+    };
+    img.onerror=function(){ callback(e.target.result); };
+    img.src=e.target.result;
+  };
+  reader.onerror=function(){ callback(null); };
+  reader.readAsDataURL(file);
 }
 
 // ============================================================
@@ -1627,28 +1679,29 @@ function triggerAlbumUpload() {
   if(album && !album.allowUpload){ showToast('This album is managed by SEB admins only.'); return; }
   var inp=document.createElement('input');
   inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+  inp.style.position='fixed'; inp.style.left='-9999px'; inp.style.opacity='0';
+  document.body.appendChild(inp);
   inp.onchange=function(ev){
     var files=Array.from(ev.target.files);
-    if(!files.length) return;
+    if(!files.length){ inp.remove(); return; }
     var album=SEB_ALBUMS.find(function(a){ return a.id===currentAlbumId; });
-    if(!album) return;
+    if(!album){ inp.remove(); return; }
     var progress=document.getElementById('albumUploadProgress');
     if(progress) progress.style.display='block';
     var uploader=currentUHUser.firstName+' '+currentUHUser.lastName;
     var done=0;
     files.forEach(function(file){
-      var reader=new FileReader();
-      reader.onload=function(e){
-        album.photos.push({url:e.target.result, uploader:uploader, time:new Date().toLocaleDateString()});
+      compressImageFile(file, function(url){
+        if(url) album.photos.push({url:url, uploader:uploader, time:new Date().toLocaleDateString()});
         done++;
         if(done===files.length){
           if(progress) progress.style.display='none';
           renderAlbumDetail(album);
           showToast(done+' photo'+(done!==1?'s':'')+' uploaded to '+album.name+'!');
           saveSebData();
+          inp.remove();
         }
-      };
-      reader.readAsDataURL(file);
+      });
     });
   };
   inp.click();
@@ -1698,16 +1751,15 @@ function editPhotoClick(idx, type) {
 }
 function handleFileUpload(ev) {
   var file=ev.target.files[0]; if(!file) return;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    var url=e.target.result; var t=_photoTarget.type; var i=_photoTarget.index;
+  var t=_photoTarget.type; var i=_photoTarget.index;
+  compressImageFile(file, function(url){
+    if(!url) return;
     if(t==='eb'){ SEB_DATA.eb[i].photo=url; renderEB(); }
     else if(t==='event'){ SEB_DATA.events[i].photo=url; renderSocialEvents(); }
     else if(t==='gallery'){ SEB_DATA.galleryPhotos[i]=url; renderGallery(); }
     else if(t==='shopphoto'){ SEB_DATA.shopItems[i].photo=url; renderShop(); }
     saveSebData();
-  };
-  reader.readAsDataURL(file);
+  });
   ev.target.value='';
 }
 
@@ -1802,7 +1854,7 @@ function showAdmTab(btn, panelId) {
   if(body) body.scrollTop=0;
   if(panelId==='adm-home')     { renderAdmUpcoming(); renderAdmEB(); loadAdminInstaCode(); loadHeroFields(); renderAdmNLGraphics(); }
   if(panelId==='adm-orders')   renderAdmOrders();
-  if(panelId==='adm-events')   renderAdmEvents();
+  if(panelId==='adm-events')   { renderAdmEvents(); renderAdmGallery(); }
   if(panelId==='adm-shop')     renderAdmShop();
   if(panelId==='adm-albums')   renderAdmAlbums();
   if(panelId==='adm-crm')      { renderAdmVideos(); renderAdmResources(); }
@@ -1936,6 +1988,47 @@ function moveAdmEvent(i, dir){
 function addAdmEvent(){ SEB_DATA.events.push({name:'New Event',date:'TBD',desc:'Description.',photo:''}); renderAdmEvents(); renderSocialEvents(); }
 function removeAdmEvent(i){ SEB_DATA.events.splice(i,1); renderAdmEvents(); renderSocialEvents(); saveSebData(); }
 function applyEvents(){ renderSocialEvents(); renderAdmEvents(); showSaved('sv-events'); }
+
+// ---- PAST YEARS / GALLERY ADMIN ----
+function renderAdmGallery(){
+  var c=document.getElementById('admGalleryList'); if(!c) return;
+  var photos = SEB_DATA.galleryPhotos.filter(function(p){ return !!p; });
+  if(!photos.length){ c.innerHTML='<div style="font-size:13px;color:#8a7f70;padding:12px;background:white;border:1px solid #D4C9B0">No photos uploaded yet.</div>'; return; }
+  var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
+  SEB_DATA.galleryPhotos.forEach(function(p,i){
+    if(!p) return;
+    html+='<div style="position:relative">';
+    html+='<div style="width:100%;aspect-ratio:1;background:#f0ece2;overflow:hidden;border:1px solid #D4C9B0"><img src="'+p+'" style="width:100%;height:100%;object-fit:cover"></div>';
+    html+='<button onclick="removeGalleryPhoto('+i+')" title="Remove" style="position:absolute;top:4px;right:4px;background:rgba(26,22,18,.75);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1">&#x2715;</button>';
+    html+='</div>';
+  });
+  html+='</div>';
+  c.innerHTML=html;
+}
+function admUploadGalleryPhotos(){
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+  inp.style.position='fixed'; inp.style.left='-9999px'; inp.style.opacity='0';
+  document.body.appendChild(inp);
+  inp.onchange=function(ev){
+    var files=Array.prototype.slice.call(ev.target.files);
+    if(!files.length){ inp.remove(); return; }
+    var remaining=files.length;
+    files.forEach(function(file){
+      compressImageFile(file, function(url){
+        if(url){
+          // fill the first empty slot if one exists, otherwise add a new slot
+          var emptyIdx=SEB_DATA.galleryPhotos.indexOf('');
+          if(emptyIdx!==-1) SEB_DATA.galleryPhotos[emptyIdx]=url;
+          else SEB_DATA.galleryPhotos.push(url);
+        }
+        remaining--;
+        if(remaining===0){ renderGallery(); renderAdmGallery(); saveSebData(); showSaved('sv-gallery'); inp.remove(); }
+      });
+    });
+  };
+  inp.click();
+}
+function removeGalleryPhoto(i){ SEB_DATA.galleryPhotos.splice(i,1); renderGallery(); renderAdmGallery(); saveSebData(); }
 function renderAdmShop(){
   var c=document.getElementById('admShopList'); if(!c) return;
   var html='';
@@ -2091,16 +2184,14 @@ function admUploadPhoto(idx, ptype){
   inp.onchange=function(ev){
     var file=ev.target.files[0];
     if(!file){ inp.remove(); return; }
-    var reader=new FileReader();
-    reader.onload=function(e){
-      var url=e.target.result;
-      if(ptype==='event'){ SEB_DATA.events[idx].photo=url; renderSocialEvents(); renderAdmEvents(); }
-      else if(ptype==='shopphoto'){ SEB_DATA.shopItems[idx].photo=url; renderShop(); renderAdmShop(); }
-      saveSebData();
+    compressImageFile(file, function(url){
+      if(url){
+        if(ptype==='event'){ SEB_DATA.events[idx].photo=url; renderSocialEvents(); renderAdmEvents(); }
+        else if(ptype==='shopphoto'){ SEB_DATA.shopItems[idx].photo=url; renderShop(); renderAdmShop(); }
+        saveSebData();
+      }
       inp.remove();
-    };
-    reader.onerror=function(){ inp.remove(); };
-    reader.readAsDataURL(file);
+    });
   };
   inp.click();
 }
@@ -2186,17 +2277,16 @@ function admUploadResourceFile(idx){
   inp.onchange=function(ev){
     var file=ev.target.files[0];
     if(!file){ inp.remove(); return; }
-    var reader=new FileReader();
-    reader.onload=function(e){
-      SEB_DATA.resources[idx].url=e.target.result;
-      SEB_DATA.resources[idx].fileName=file.name;
-      renderResources();
-      renderAdmResources();
-      saveSebData();
+    compressImageFile(file, function(url){
+      if(url){
+        SEB_DATA.resources[idx].url=url;
+        SEB_DATA.resources[idx].fileName=file.name;
+        renderResources();
+        renderAdmResources();
+        saveSebData();
+      }
       inp.remove();
-    };
-    reader.onerror=function(){ inp.remove(); };
-    reader.readAsDataURL(file);
+    });
   };
   inp.click();
 }
@@ -2228,14 +2318,13 @@ function admUploadNLGraphics(){
     if(!files.length){ inp.remove(); return; }
     var remaining=files.length;
     files.forEach(function(file){
-      var reader=new FileReader();
-      reader.onload=function(e){
-        SEB_DATA.newsletterGraphics.push({url:e.target.result, name:file.name, type:(file.type==='application/pdf'?'pdf':'image')});
+      compressImageFile(file, function(url){
+        if(url){
+          SEB_DATA.newsletterGraphics.push({url:url, name:file.name, type:(file.type==='application/pdf'?'pdf':'image')});
+        }
         remaining--;
         if(remaining===0){ renderNLGraphics(); renderAdmNLGraphics(); saveSebData(); showSaved('sv-nlgraphics'); inp.remove(); }
-      };
-      reader.onerror=function(){ remaining--; if(remaining===0) inp.remove(); };
-      reader.readAsDataURL(file);
+      });
     });
   };
   inp.click();
