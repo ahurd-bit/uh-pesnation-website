@@ -344,41 +344,6 @@ body.edit-mode .event-card-img .dl-badge{display:none}
 </head>
 <body>
 
-<!-- AUTH MODAL -->
-<div class="auth-modal" id="authModal">
-  <div class="auth-box">
-    <button class="auth-close" onclick="closeAuthModal()">&#x2715;</button>
-    <div id="authLoginView">
-      <h2>Sign In</h2>
-      <p>Sign in with your sales email to access SEB Center.</p>
-      <input type="email" id="authLoginEmail" placeholder="your sales program email">
-      <input type="password" id="authLoginPw" placeholder="Password">
-      <div class="auth-err" id="authLoginErr">Incorrect email or password.</div>
-      <button class="auth-btn" onclick="doLogin()">Sign In</button>
-      <div class="auth-switch">No account? <span onclick="showAuthRegister()">Create one</span></div>
-    </div>
-    <div id="authRegisterView" style="display:none">
-      <h2>Create Account</h2>
-      <p>Sign in with your sales email to join SEB Center.</p>
-      <input type="text" id="authRegFirst" placeholder="First name">
-      <input type="text" id="authRegLast" placeholder="Last name">
-      <input type="email" id="authRegEmail" placeholder="your sales program email">
-      <input type="password" id="authRegPw" placeholder="Create a password (min 6 chars)">
-      <div class="auth-err" id="authRegErr">Please check your details.</div>
-      <button class="auth-btn" onclick="doRegister()">Create Account</button>
-      <div class="auth-switch">Have an account? <span onclick="showAuthLogin()">Sign in</span></div>
-    </div>
-    <div id="authProfileView" style="display:none">
-      <div style="text-align:center;margin-bottom:20px">
-        <div id="profileAvatar" style="width:60px;height:60px;border-radius:50%;background:#C8102E;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:white;margin:0 auto 12px"></div>
-        <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700" id="profileName"></div>
-        <div style="font-family:Inter,sans-serif;font-size:12px;color:#5C5448" id="profileEmail"></div>
-      </div>
-      <button class="auth-btn" onclick="doLogout()">Sign Out</button>
-    </div>
-  </div>
-</div>
-
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <button class="lightbox-close" onclick="closeLightbox()">&#x2715;</button>
@@ -723,10 +688,6 @@ body.edit-mode .event-card-img .dl-badge{display:none}
     <div class="masthead-eyebrow" data-editable="mast-eyebrow">University of Houston &middot; C. T. Bauer College of Business</div>
     <div class="masthead-title-wrap">
       <div class="masthead-title" data-editable="mast-title">Student Executive Board</div>
-      <button class="nav-user-btn" id="navUserBtn" onclick="handleNavUserClick()" title="Sign In / My Account" onmouseover="navBtnHover(true)" onmouseout="navBtnHover(false)">
-        <span id="navUserIcon" style="font-size:16px;color:#1A1612">&#x1F464;</span>
-        <div id="navUserCircle" class="nav-user-circle"></div>
-      </button>
     </div>
     <div class="masthead-subtitle" data-editable="mast-subtitle">Professional Sales Program &middot; EST. 2010</div>
   </div>
@@ -885,26 +846,15 @@ body.edit-mode .event-card-img .dl-badge{display:none}
   <div id="sebCenterLock" class="seb-center-lock">
     <div style="font-size:48px;margin-bottom:16px">&#x1F512;</div>
     <h2>SEB Center</h2>
-    <p>SEB Center is exclusively for UH Sales Program students. Sign in with your sales email to access headshots, event photos, and upload your own.</p>
-    <button class="auth-btn" onclick="openAuthModal()">Sign In to Access</button>
-    <div style="font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);margin-top:12px">Don&#x27;t have an account? <span style="color:var(--scarlet);cursor:pointer;text-decoration:underline" onclick="openAuthModal(true)">Create one</span></div>
+    <p>This section is for PES members only.</p>
+    <input type="password" id="sebCenterPw" placeholder="Enter password" style="display:block;margin:0 auto 12px;max-width:280px;width:100%;padding:10px;border:1px solid var(--rule);font-family:var(--font-ui);font-size:13px">
+    <button class="auth-btn" onclick="unlockSebCenter()">Access SEB Center</button>
+    <p id="sebCenterErr" style="color:var(--scarlet);font-family:var(--font-ui);font-size:12px;margin-top:10px;display:none">Incorrect password.</p>
   </div>
 
   <!-- UNLOCKED VIEW -->
   <div id="sebCenterContent" style="display:none">
     <div style="max-width:1100px;margin:0 auto;padding:24px 24px 40px">
-
-      <!-- Signed in as bar -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;background:white;border:1px solid var(--rule);padding:12px 16px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <div id="sebCenterAvatar" style="width:34px;height:34px;border-radius:50%;background:var(--scarlet);display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-size:11px;font-weight:700;color:white">?</div>
-          <div>
-            <div style="font-family:var(--font-ui);font-size:13px;font-weight:600;color:var(--ink)" id="sebCenterName"></div>
-            <div style="font-family:var(--font-ui);font-size:11px;color:var(--ink-muted)" id="sebCenterEmail"></div>
-          </div>
-        </div>
-        <button onclick="doLogout()" style="font-family:var(--font-ui);font-size:11px;color:var(--ink-muted);background:none;border:1px solid var(--rule);padding:5px 12px;cursor:pointer">Sign Out</button>
-      </div>
 
       <!-- ALBUM LIST VIEW -->
       <div id="albumListView">
@@ -1178,133 +1128,29 @@ var _pendingUploadFiles = [];
 var _photoTarget = {type:'', index:0};
 
 // ============================================================
-// AUTH
+// SEB CENTER ACCESS (password-gated, same style as CRM Toolkit —
+// no accounts needed. Anyone with the password can view; anyone
+// can upload photos to albums that allow it.)
 // ============================================================
-var UH_USERS = {};
-var currentUHUser = null;
-
-// Load persisted users from localStorage
-(function(){
-  try {
-    var saved = localStorage.getItem('seb_users');
-    if(saved) UH_USERS = JSON.parse(saved);
-    var loggedIn = localStorage.getItem('seb_current_user');
-    if(loggedIn) currentUHUser = JSON.parse(loggedIn);
-  } catch(e) {}
-})();
-
-function persistUsers(){
-  try { localStorage.setItem('seb_users', JSON.stringify(UH_USERS)); } catch(e){}
-}
-function persistCurrentUser(){
-  try {
-    if(currentUHUser) localStorage.setItem('seb_current_user', JSON.stringify(currentUHUser));
-    else localStorage.removeItem('seb_current_user');
-  } catch(e){}
-}
-var VALID_DOMAINS = ['@uhsales.org','@programforexcellenceinselling.com','@programforexcellenceinselling.org'];
-
-function isValidDomain(email) {
-  return VALID_DOMAINS.some(function(d){ return email.toLowerCase().endsWith(d); });
-}
-function openAuthModal(reg) {
-  document.getElementById('authModal').classList.add('open');
-  if(currentUHUser){ showAuthProfile(); }
-  else if(reg){ showAuthRegister(); }
-  else { showAuthLogin(); }
-}
-function closeAuthModal() {
-  document.getElementById('authModal').classList.remove('open');
-  var e1=document.getElementById('authLoginErr'); if(e1) e1.style.display='none';
-  var e2=document.getElementById('authRegErr'); if(e2) e2.style.display='none';
-}
-function showAuthLogin() {
-  document.getElementById('authLoginView').style.display='block';
-  document.getElementById('authRegisterView').style.display='none';
-  document.getElementById('authProfileView').style.display='none';
-}
-function showAuthRegister() {
-  document.getElementById('authLoginView').style.display='none';
-  document.getElementById('authRegisterView').style.display='block';
-  document.getElementById('authProfileView').style.display='none';
-}
-function showAuthProfile() {
-  document.getElementById('authLoginView').style.display='none';
-  document.getElementById('authRegisterView').style.display='none';
-  document.getElementById('authProfileView').style.display='block';
-  if(currentUHUser){
-    var init=(currentUHUser.firstName.charAt(0)+currentUHUser.lastName.charAt(0)).toUpperCase();
-    document.getElementById('profileAvatar').textContent=init;
-    document.getElementById('profileName').textContent=currentUHUser.firstName+' '+currentUHUser.lastName;
-    document.getElementById('profileEmail').textContent=currentUHUser.email;
-  }
-}
-function doLogin() {
-  var email=document.getElementById('authLoginEmail').value.trim().toLowerCase();
-  var pw=document.getElementById('authLoginPw').value;
-  var err=document.getElementById('authLoginErr');
-  if(!isValidDomain(email)){ err.textContent='Must use a sales program email.'; err.style.display='block'; return; }
-  if(!UH_USERS[email]||UH_USERS[email].password!==pw){ err.textContent='Incorrect email or password.'; err.style.display='block'; return; }
-  currentUHUser=UH_USERS[email];
-  persistCurrentUser();
-  closeAuthModal(); updateNavUser(); updateSEBCenter();
-}
-function doRegister() {
-  var first=document.getElementById('authRegFirst').value.trim();
-  var last=document.getElementById('authRegLast').value.trim();
-  var email=document.getElementById('authRegEmail').value.trim().toLowerCase();
-  var pw=document.getElementById('authRegPw').value;
-  var err=document.getElementById('authRegErr');
-  if(!first||!last){ err.textContent='Please enter your full name.'; err.style.display='block'; return; }
-  if(!isValidDomain(email)){ err.textContent='Must use a sales program email.'; err.style.display='block'; return; }
-  if(pw.length<6){ err.textContent='Password must be at least 6 characters.'; err.style.display='block'; return; }
-  if(UH_USERS[email]){ err.textContent='An account with this email already exists.'; err.style.display='block'; return; }
-  UH_USERS[email]={firstName:first,lastName:last,email:email,password:pw};
-  currentUHUser=UH_USERS[email];
-  persistUsers();
-  persistCurrentUser();
-  closeAuthModal(); updateNavUser(); updateSEBCenter();
-  showToast('Welcome, '+first+'! Your account is ready. You will stay signed in on this device.');
-}
-function doLogout() {
-  currentUHUser=null;
-  persistCurrentUser();
-  closeAuthModal(); updateNavUser(); updateSEBCenter();
-}
-function handleNavUserClick() { openAuthModal(); }
-function navBtnHover(over) {
-  var btn=document.getElementById('navUserBtn'); if(!btn) return;
-  btn.style.borderColor=(over||currentUHUser)?'#C8102E':'#D4C9B0';
-}
-function updateNavUser() {
-  var btn=document.getElementById('navUserBtn');
-  var icon=document.getElementById('navUserIcon');
-  var circle=document.getElementById('navUserCircle');
-  if(!btn) return;
-  if(currentUHUser){
-    var init=(currentUHUser.firstName.charAt(0)+currentUHUser.lastName.charAt(0)).toUpperCase();
-    btn.style.borderColor='#C8102E';
-    if(icon) icon.style.display='none';
-    if(circle){ circle.style.display='flex'; circle.textContent=init; }
+function unlockSebCenter() {
+  var pw=document.getElementById('sebCenterPw').value;
+  if(pw===SEB_DATA.crmPassword){
+    document.getElementById('sebCenterLock').style.display='none';
+    document.getElementById('sebCenterContent').style.display='block';
+    try{ sessionStorage.setItem('seb_center_unlocked','1'); }catch(e){}
+    renderAlbums();
   } else {
-    btn.style.borderColor='#D4C9B0';
-    if(icon){ icon.style.display='inline'; icon.textContent='👤'; }
-    if(circle) circle.style.display='none';
+    document.getElementById('sebCenterErr').style.display='block';
   }
 }
 function updateSEBCenter() {
   var lock=document.getElementById('sebCenterLock');
   var cnt=document.getElementById('sebCenterContent');
-  if(currentUHUser){
+  var unlocked=false;
+  try{ unlocked = sessionStorage.getItem('seb_center_unlocked')==='1'; }catch(e){}
+  if(unlocked){
     if(lock) lock.style.display='none';
     if(cnt) cnt.style.display='block';
-    var init=(currentUHUser.firstName.charAt(0)+currentUHUser.lastName.charAt(0)).toUpperCase();
-    var av=document.getElementById('sebCenterAvatar');
-    var nm=document.getElementById('sebCenterName');
-    var em=document.getElementById('sebCenterEmail');
-    if(av) av.textContent=init;
-    if(nm) nm.textContent=currentUHUser.firstName+' '+currentUHUser.lastName;
-    if(em) em.textContent=currentUHUser.email;
     renderAlbums();
   } else {
     if(lock) lock.style.display='block';
@@ -1674,7 +1520,6 @@ function backToAlbums() {
 }
 
 function triggerAlbumUpload() {
-  if(!currentUHUser){ openAuthModal(); return; }
   var album=SEB_ALBUMS.find(function(a){ return a.id===currentAlbumId; });
   if(album && !album.allowUpload){ showToast('This album is managed by SEB admins only.'); return; }
   var inp=document.createElement('input');
@@ -1686,9 +1531,9 @@ function triggerAlbumUpload() {
     if(!files.length){ inp.remove(); return; }
     var album=SEB_ALBUMS.find(function(a){ return a.id===currentAlbumId; });
     if(!album){ inp.remove(); return; }
+    var uploader=(prompt('Add your name so members know who shared these (optional):','')||'').trim() || 'Anonymous';
     var progress=document.getElementById('albumUploadProgress');
     if(progress) progress.style.display='block';
-    var uploader=currentUHUser.firstName+' '+currentUHUser.lastName;
     var done=0;
     files.forEach(function(file){
       compressImageFile(file, function(url){
@@ -2444,7 +2289,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
   renderAll();
   initEditables();
-  updateNavUser();
   updateSEBCenter();
 
   var title=document.querySelector('.masthead-title');
@@ -2456,7 +2300,7 @@ document.addEventListener('DOMContentLoaded', function(){
   document.addEventListener('keydown', function(ev){
     if((ev.altKey && (ev.key==='a'||ev.key==='A'))) { ev.preventDefault(); openAdminLogin(); }
     if(ev.key==='Escape'){
-      closeAdminLogin(); closeAuthModal(); closeCheckout(); closeLightbox(); closeModal(); closeVideoModal();
+      closeAdminLogin(); closeCheckout(); closeLightbox(); closeModal(); closeVideoModal();
       var panel=document.getElementById('adminPanel'); if(panel) panel.style.display='none';
     }
   });
