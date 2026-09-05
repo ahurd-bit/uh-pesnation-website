@@ -135,6 +135,12 @@ body.edit-mode .eb-photo-wrap:hover .eb-photo-overlay{display:flex}
 .album-folder-meta{font-family:var(--font-ui);font-size:11px;color:var(--ink-muted)}
 .gallery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
 .gallery-item{aspect-ratio:1;background:#f0ece2;display:flex;align-items:center;justify-content:center;font-family:var(--font-body);font-style:italic;font-size:12px;color:var(--ink-muted);cursor:pointer;overflow:hidden;position:relative}
+.memories-scroll-wrap{overflow:hidden;margin-top:16px}
+.memories-track{display:flex;gap:8px;width:max-content;animation:memoriesScroll 50s linear infinite}
+.memories-track:hover{animation-play-state:paused}
+@keyframes memoriesScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.memories-track .memories-item{width:200px;height:200px;flex-shrink:0;aspect-ratio:1;background:#f0ece2;overflow:hidden;position:relative;cursor:pointer}
+.memories-track .memories-item img{width:100%;height:100%;object-fit:cover}
 .gallery-item img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
 .gallery-item .gal-label{position:relative;z-index:1}
 /* CRM */
@@ -305,6 +311,7 @@ body.edit-mode .eb-photo-wrap:hover .eb-photo-overlay{display:flex}
   .eb-grid{grid-template-columns:repeat(4,1fr)}
   .video-grid{grid-template-columns:1fr 1fr}
   .gallery-grid{grid-template-columns:repeat(3,1fr)}
+  .memories-track .memories-item{width:140px;height:140px}
   .album-grid{grid-template-columns:1fr 1fr}
 }
 
@@ -588,6 +595,15 @@ body.edit-mode .eb-photo-wrap:hover .eb-photo-overlay{display:flex}
           <button class="adm-btn adm-btn-red" onclick="applySocialsSections()">Save All Sections</button>
           <span class="adm-saved" id="sv-socialssections">&#x2713; Saved!</span>
         </div>
+        <div class="adm-card" style="margin-top:20px">
+          <div class="adm-card-title">Memories (Rotating Slider)</div>
+          <div class="apanel-desc" style="margin-bottom:10px">Upload photos for the auto-scrolling "Memories" strip on the Socials page. Students can click any photo there to download it.</div>
+          <div id="admMemoriesList"></div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+            <button class="adm-btn adm-btn-dark" onclick="admUploadMemories()">+ Add Photo(s)</button>
+            <span class="adm-saved" id="sv-memories">&#x2713; Saved!</span>
+          </div>
+        </div>
       </div>
 
       <!-- CRM TOOLKIT TAB -->
@@ -796,6 +812,13 @@ body.edit-mode .eb-photo-wrap:hover .eb-photo-overlay{display:flex}
     <p class="serif-intro" style="margin-top:10px" data-editable="socials-sub">Browse photos from SEB socials, organized by section. Click a folder to open it.</p>
   </div>
   <div class="album-folder-grid" id="socialsSectionsGrid"></div>
+  <hr class="section-rule">
+  <div>
+    <div class="section-label">Photo Archive</div>
+    <div class="display-heading" style="font-size:26px" data-editable="memories-heading">Memories</div>
+    <p style="font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);margin-top:8px;margin-bottom:16px" data-editable="memories-sub">Click anywhere to part take in the memory.</p>
+    <div class="memories-scroll-wrap"><div class="memories-track" id="memoriesTrack"></div></div>
+  </div>
 </div>
 
 <!-- CRM -->
@@ -1018,6 +1041,7 @@ body.edit-mode .eb-photo-wrap:hover .eb-photo-overlay{display:flex}
     {id:'sec4', name:'Spring Socials', emoji:'🌸', photos:[], driveUrl:'', drivePhotos:[]},
     {id:'sec5', name:'Awards & Banquets', emoji:'🏆', photos:[], driveUrl:'', drivePhotos:[]}
   ],
+  memories: [],
   videos: [
     {title:'CRM Basics: Contacts & Accounts',dur:'8:24 - Introduction',url:'',fileData:''},
     {title:'Building Your Pipeline',dur:'12:10 - Intermediate',url:'',fileData:''},
@@ -1342,6 +1366,17 @@ function syncSocialsSectionFromDrive(){
     alert('Drive sync failed — check your internet connection and API key.');
   });
 }
+function renderMemories() {
+  var g=document.getElementById('memoriesTrack'); if(!g) return;
+  if(!SEB_DATA.memories.length){
+    g.innerHTML='<div style="font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);padding:24px">No memories uploaded yet.</div>';
+    return;
+  }
+  var itemsHtml = SEB_DATA.memories.map(function(url,i){
+    return '<div class="memories-item" onclick="downloadImage(\''+url+'\',\'seb-memory-'+(i+1)+'.jpg\',event)" title="Click to download"><img src="'+url+'" alt="memory"></div>';
+  }).join('');
+  g.innerHTML = itemsHtml + itemsHtml;
+}
 function renderNLGraphics() {
   var g=document.getElementById('nlGraphicsGrid'); if(!g) return;
   if(!SEB_DATA.newsletterGraphics.length){
@@ -1548,7 +1583,7 @@ function renderAlbums() {
   }
 }
 function renderAll() {
-  renderTicker(); renderEB(); renderUpcoming(); renderSocialsSections();
+  renderTicker(); renderEB(); renderUpcoming(); renderSocialsSections(); renderMemories();
   renderVideos(); renderResources(); renderNLDate(); renderShop(); renderSlap(); renderNLGraphics();
 }
 
@@ -1864,7 +1899,7 @@ function showAdmTab(btn, panelId) {
   if(body) body.scrollTop=0;
   if(panelId==='adm-home')     { renderAdmUpcoming(); renderAdmEB(); loadAdminInstaCode(); loadHeroFields(); renderAdmNLGraphics(); }
   if(panelId==='adm-orders')   renderAdmOrders();
-  if(panelId==='adm-events')   { renderAdmSocialsSections(); var dk=document.getElementById('admDriveApiKey'); if(dk) dk.value=SEB_DATA.driveApiKey||''; }
+  if(panelId==='adm-events')   { renderAdmSocialsSections(); renderAdmMemories(); var dk=document.getElementById('admDriveApiKey'); if(dk) dk.value=SEB_DATA.driveApiKey||''; }
   if(panelId==='adm-shop')     renderAdmShop();
   if(panelId==='adm-albums')   renderAdmAlbums();
   if(panelId==='adm-crm')      { renderAdmVideos(); renderAdmResources(); }
@@ -2043,6 +2078,40 @@ function removeAdmSocialsSection(i){
   }
 }
 function applySocialsSections(){ renderSocialsSections(); renderAdmSocialsSections(); saveSebData(); showSaved('sv-socialssections'); }
+
+// ---- MEMORIES (rotating slider) ADMIN ----
+function renderAdmMemories(){
+  var c=document.getElementById('admMemoriesList'); if(!c) return;
+  if(!SEB_DATA.memories.length){ c.innerHTML='<div style="font-size:13px;color:#8a7f70;padding:12px;background:white;border:1px solid #D4C9B0">No photos uploaded yet.</div>'; return; }
+  var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
+  SEB_DATA.memories.forEach(function(url,i){
+    html+='<div style="position:relative">';
+    html+='<div style="width:100%;aspect-ratio:1;background:#f0ece2;overflow:hidden;border:1px solid #D4C9B0"><img src="'+url+'" style="width:100%;height:100%;object-fit:cover"></div>';
+    html+='<button onclick="removeMemoryPhoto('+i+')" title="Remove" style="position:absolute;top:4px;right:4px;background:rgba(26,22,18,.75);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1">&#x2715;</button>';
+    html+='</div>';
+  });
+  html+='</div>';
+  c.innerHTML=html;
+}
+function admUploadMemories(){
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+  inp.style.position='fixed'; inp.style.left='-9999px'; inp.style.opacity='0';
+  document.body.appendChild(inp);
+  inp.onchange=function(ev){
+    var files=Array.prototype.slice.call(ev.target.files);
+    if(!files.length){ inp.remove(); return; }
+    var remaining=files.length;
+    files.forEach(function(file){
+      compressImageFile(file, function(url){
+        if(url) SEB_DATA.memories.push(url);
+        remaining--;
+        if(remaining===0){ renderMemories(); renderAdmMemories(); saveSebData(); showSaved('sv-memories'); inp.remove(); }
+      });
+    });
+  };
+  inp.click();
+}
+function removeMemoryPhoto(i){ SEB_DATA.memories.splice(i,1); renderMemories(); renderAdmMemories(); saveSebData(); }
 function renderAdmShop(){
   var c=document.getElementById('admShopList'); if(!c) return;
   var html='';
