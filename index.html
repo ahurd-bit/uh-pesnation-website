@@ -129,6 +129,12 @@ body.edit-mode .event-card-img .dl-badge{display:none}
 .event-album-modal{display:none;position:fixed;inset:0;z-index:99997;background:rgba(26,22,18,.85);overflow-y:auto;padding:40px 20px}
 .event-album-modal.open{display:block}
 .event-album-box{max-width:900px;margin:0 auto;background:var(--surface);padding:28px}
+.album-folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px;margin-top:16px}
+.album-folder-card{background:var(--surface);border:1px solid var(--rule);padding:18px;cursor:pointer;transition:border-color .15s}
+.album-folder-card:hover{border-color:var(--scarlet)}
+.album-folder-icon{font-size:28px;margin-bottom:10px}
+.album-folder-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:4px}
+.album-folder-meta{font-family:var(--font-ui);font-size:11px;color:var(--ink-muted)}
 .gallery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
 .gallery-scroll-wrap{overflow:hidden;margin-top:16px}
 .gallery-track{display:flex;gap:8px;width:max-content;animation:galleryScroll 50s linear infinite}
@@ -391,6 +397,21 @@ body.edit-mode .event-card-img .dl-badge{display:none}
   </div>
 </div>
 
+<!-- SOCIALS PHOTO ALBUM MODAL (standalone folders, e.g. "Fall Kickoff Mixer") -->
+<div class="event-album-modal" id="socialsAlbumModal" onclick="if(event.target===this)closeSocialsAlbum()">
+  <div class="event-album-box">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div>
+        <div id="socialsAlbumTitle" style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--ink)"></div>
+        <div id="socialsAlbumSub" style="font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);margin-top:4px"></div>
+      </div>
+      <button onclick="closeSocialsAlbum()" style="background:none;border:none;font-size:22px;color:var(--ink-muted);cursor:pointer;line-height:1">&#x2715;</button>
+    </div>
+    <div id="socialsAlbumAdminNote" style="display:none;margin-bottom:16px;font-family:var(--font-ui);font-size:11px;color:var(--ink-muted)">To add photos, link a Google Drive folder, or delete this album, use <strong>Admin Panel → Socials & Events → Socials Photo Albums</strong>.</div>
+    <div class="album-photo-grid" id="socialsAlbumGrid"></div>
+  </div>
+</div>
+
 <!-- CHECKOUT MODAL -->
 <!-- CHECKOUT is now handled entirely by Snipcart's own cart panel (see snipcart-checkout / snipcart-add-item buttons) -->
 
@@ -584,12 +605,13 @@ body.edit-mode .event-card-img .dl-badge{display:none}
           </div>
         </div>
         <div class="adm-card" style="margin-top:20px">
-          <div class="adm-card-title">Socials Photo Album</div>
-          <div class="apanel-desc" style="margin-bottom:10px">A standalone photo album shown on the Socials page — not tied to any specific event. Upload as many photos as you want; students can click any one to download it.</div>
-          <div id="admSocialsPhotosList"></div>
+          <div class="adm-card-title">Socials Photo Albums</div>
+          <div class="apanel-desc" style="margin-bottom:10px">Organize Socials photos into named folders (e.g. "Fall Kickoff Mixer"). Each album supports uploading photos directly from your computer AND/OR linking a Google Drive folder — not tied to any specific event.</div>
+          <div id="admSocialsAlbumsList"></div>
           <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-            <button class="adm-btn adm-btn-dark" onclick="admUploadSocialsPhotos()">+ Add Photo(s)</button>
-            <span class="adm-saved" id="sv-socialsphotos">&#x2713; Saved!</span>
+            <button class="adm-btn adm-btn-dark" onclick="addAdmSocialsAlbum()">+ Add Album</button>
+            <button class="adm-btn adm-btn-red" onclick="applySocialsAlbums()">Save All Albums</button>
+            <span class="adm-saved" id="sv-socialsalbums">&#x2713; Saved!</span>
           </div>
         </div>
       </div>
@@ -809,10 +831,10 @@ body.edit-mode .event-card-img .dl-badge{display:none}
   </div>
   <hr class="section-rule">
   <div>
-    <div class="section-label">Photo Album</div>
+    <div class="section-label">Photo Albums</div>
     <div class="display-heading" style="font-size:26px" data-editable="socialsphotos-heading">Socials Photos</div>
-    <p style="font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);margin-top:8px;margin-bottom:16px" data-editable="socialsphotos-sub">Browse photos from SEB socials. Click any photo to download it.</p>
-    <div class="album-photo-grid" id="socialsPhotosGrid"></div>
+    <p style="font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);margin-top:8px;margin-bottom:16px" data-editable="socialsphotos-sub">Browse photo albums from SEB socials, organized by event. Click a folder to open it.</p>
+    <div class="album-folder-grid" id="socialsAlbumsGrid"></div>
   </div>
 </div>
 
@@ -1046,7 +1068,7 @@ body.edit-mode .event-card-img .dl-badge{display:none}
     {name:'Spring Awards Banquet',date:'Apr 18',desc:'End-of-year celebration recognizing outstanding members.',photo:''}
   ],
   galleryPhotos: ['','','','','','','',''],
-  socialsPhotos: [],
+  socialsAlbums: [],
   videos: [
     {title:'CRM Basics: Contacts & Accounts',dur:'8:24 - Introduction',url:'',fileData:''},
     {title:'Building Your Pipeline',dur:'12:10 - Intermediate',url:'',fileData:''},
@@ -1336,15 +1358,47 @@ function galleryItemClick(i, ev){
   var url = SEB_DATA.galleryPhotos[i];
   if(url) downloadImage(url, 'seb-memory-'+(i+1)+'.jpg', ev);
 }
-// ---- SOCIALS PHOTO ALBUM (standalone, not tied to a specific event) ----
-function renderSocialsPhotos() {
-  var g=document.getElementById('socialsPhotosGrid'); if(!g) return;
-  if(!SEB_DATA.socialsPhotos.length){
-    g.innerHTML='<div style="grid-column:1/-1;font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);padding:24px;text-align:center;background:var(--surface);border:1px solid var(--rule)">No photos in the album yet.</div>';
+// ---- SOCIALS PHOTO ALBUMS (standalone folders, e.g. "Fall Kickoff Mixer") ----
+function renderSocialsAlbums() {
+  var g=document.getElementById('socialsAlbumsGrid'); if(!g) return;
+  if(!SEB_DATA.socialsAlbums.length){
+    g.innerHTML='<div style="grid-column:1/-1;font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);padding:24px;text-align:center;background:var(--surface);border:1px solid var(--rule)">No photo albums yet.</div>';
     return;
   }
-  g.innerHTML=SEB_DATA.socialsPhotos.map(function(url,i){
-    return '<div class="album-photo" onclick="downloadImage(\''+url+'\',\'seb-socials-'+(i+1)+'.jpg\',event)" title="Click to download"><img src="'+url+'"></div>';
+  g.innerHTML=SEB_DATA.socialsAlbums.map(function(a){
+    var count=(a.photos||[]).length+(a.drivePhotos||[]).length;
+    return '<div class="album-folder-card" onclick="openSocialsAlbumView(\''+a.id+'\')">'
+      +'<div class="album-folder-icon">'+(a.emoji||'📁')+'</div>'
+      +'<div class="album-folder-name">'+a.name+'</div>'
+      +'<div class="album-folder-meta">'+(a.date?a.date+' &middot; ':'')+count+' photo'+(count!==1?'s':'')+'</div>'
+      +'</div>';
+  }).join('');
+}
+var _currentSocialsAlbumId = null;
+function openSocialsAlbumView(id){
+  var a=SEB_DATA.socialsAlbums.find(function(x){ return x.id===id; }); if(!a) return;
+  _currentSocialsAlbumId=id;
+  document.getElementById('socialsAlbumTitle').textContent=a.name;
+  document.getElementById('socialsAlbumSub').textContent=(a.date?a.date+' — ':'')+(a.desc||'');
+  var isAdmin=document.body.classList.contains('edit-mode');
+  document.getElementById('socialsAlbumAdminNote').style.display=isAdmin?'block':'none';
+  renderSocialsAlbumPhotos();
+  document.getElementById('socialsAlbumModal').classList.add('open');
+}
+function closeSocialsAlbum(){
+  var m=document.getElementById('socialsAlbumModal'); if(m) m.classList.remove('open');
+  _currentSocialsAlbumId=null;
+}
+function renderSocialsAlbumPhotos(){
+  var a=SEB_DATA.socialsAlbums.find(function(x){ return x.id===_currentSocialsAlbumId; }); if(!a) return;
+  var allPhotos=(a.drivePhotos||[]).map(function(p){ return p.url; }).concat(a.photos||[]);
+  var grid=document.getElementById('socialsAlbumGrid');
+  if(!allPhotos.length){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;font-family:var(--font-ui);font-size:13px;color:var(--ink-muted)">No photos in this album yet.</div>';
+    return;
+  }
+  grid.innerHTML=allPhotos.map(function(url,pi){
+    return '<div class="album-photo" onclick="downloadImage(\''+url+'\',\''+(a.name||'album').replace(/'/g,'')+'-'+(pi+1)+'.jpg\',event)" title="Click to download"><img src="'+url+'"></div>';
   }).join('');
 }
 function renderNLGraphics() {
@@ -1554,7 +1608,7 @@ function renderAlbums() {
 }
 function renderAll() {
   renderTicker(); renderEB(); renderUpcoming(); renderSocialEvents();
-  renderGallery(); renderVideos(); renderResources(); renderNLDate(); renderShop(); renderSlap(); renderNLGraphics(); renderSocialsPhotos();
+  renderGallery(); renderVideos(); renderResources(); renderNLDate(); renderShop(); renderSlap(); renderNLGraphics(); renderSocialsAlbums();
 }
 
 // ============================================================
@@ -1871,7 +1925,7 @@ function showAdmTab(btn, panelId) {
   if(body) body.scrollTop=0;
   if(panelId==='adm-home')     { renderAdmUpcoming(); renderAdmEB(); loadAdminInstaCode(); loadHeroFields(); renderAdmNLGraphics(); }
   if(panelId==='adm-orders')   renderAdmOrders();
-  if(panelId==='adm-events')   { renderAdmEvents(); renderAdmGallery(); renderAdmSocialsPhotos(); }
+  if(panelId==='adm-events')   { renderAdmEvents(); renderAdmGallery(); renderAdmSocialsAlbums(); }
   if(panelId==='adm-shop')     renderAdmShop();
   if(panelId==='adm-albums')   renderAdmAlbums();
   if(panelId==='adm-crm')      { renderAdmVideos(); renderAdmResources(); }
@@ -2047,39 +2101,103 @@ function admUploadGalleryPhotos(){
 }
 function removeGalleryPhoto(i){ SEB_DATA.galleryPhotos.splice(i,1); renderGallery(); renderAdmGallery(); saveSebData(); }
 
-// ---- SOCIALS PHOTO ALBUM ADMIN ----
-function renderAdmSocialsPhotos(){
-  var c=document.getElementById('admSocialsPhotosList'); if(!c) return;
-  if(!SEB_DATA.socialsPhotos.length){ c.innerHTML='<div style="font-size:13px;color:#8a7f70;padding:12px;background:white;border:1px solid #D4C9B0">No photos uploaded yet.</div>'; return; }
-  var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
-  SEB_DATA.socialsPhotos.forEach(function(url,i){
-    html+='<div style="position:relative">';
-    html+='<div style="width:100%;aspect-ratio:1;background:#f0ece2;overflow:hidden;border:1px solid #D4C9B0"><img src="'+url+'" style="width:100%;height:100%;object-fit:cover"></div>';
-    html+='<button onclick="removeSocialsPhoto('+i+')" title="Remove" style="position:absolute;top:4px;right:4px;background:rgba(26,22,18,.75);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1">&#x2715;</button>';
+// ---- SOCIALS PHOTO ALBUMS ADMIN (named folders, e.g. "Fall Kickoff Mixer") ----
+function renderAdmSocialsAlbums(){
+  var c=document.getElementById('admSocialsAlbumsList'); if(!c) return;
+  var html='';
+  for(var i=0;i<SEB_DATA.socialsAlbums.length;i++){
+    var a=SEB_DATA.socialsAlbums[i];
+    var totalPhotos=(a.photos||[]).length+(a.drivePhotos||[]).length;
+    html+='<div style="background:white;border:1px solid #D4C9B0;padding:18px;margin-bottom:14px">';
+    html+='<div style="font-family:Inter,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#A39160;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">';
+    html+='<span>Album '+(i+1)+'</span><span style="color:#5C5448">'+totalPhotos+' photo'+(totalPhotos!==1?'s':'')+'</span></div>';
+    html+='<div style="display:grid;grid-template-columns:60px 1fr 1fr;gap:10px;margin-bottom:12px">';
+    html+='<div><label style="font-family:Inter,sans-serif;font-size:11px;color:#5C5448;display:block;margin-bottom:4px">Icon</label><input value="'+(a.emoji||'📁')+'" oninput="SEB_DATA.socialsAlbums['+i+'].emoji=this.value" style="width:50px;font-size:18px;text-align:center;padding:7px;border:1px solid #D4C9B0;background:#FAF8F3"></div>';
+    html+='<div><label style="font-family:Inter,sans-serif;font-size:11px;color:#5C5448;display:block;margin-bottom:4px">Album Name</label><input value="'+a.name.replace(/"/g,'&quot;')+'" placeholder="e.g. Fall Kickoff Mixer" oninput="SEB_DATA.socialsAlbums['+i+'].name=this.value" style="width:100%;padding:7px;border:1px solid #D4C9B0;font-family:Inter,sans-serif;font-size:13px;background:#FAF8F3"></div>';
+    html+='<div><label style="font-family:Inter,sans-serif;font-size:11px;color:#5C5448;display:block;margin-bottom:4px">Date</label><input value="'+(a.date||'')+'" placeholder="e.g. Fall 2025" oninput="SEB_DATA.socialsAlbums['+i+'].date=this.value" style="width:100%;padding:7px;border:1px solid #D4C9B0;font-family:Inter,sans-serif;font-size:13px;background:#FAF8F3"></div>';
     html+='</div>';
-  });
-  html+='</div>';
+    html+='<div style="margin-bottom:12px"><label style="font-family:Inter,sans-serif;font-size:11px;color:#5C5448;display:block;margin-bottom:4px">Description</label>';
+    html+='<input value="'+(a.desc||'').replace(/"/g,'&quot;')+'" placeholder="e.g. Photos from our fall kickoff mixer." oninput="SEB_DATA.socialsAlbums['+i+'].desc=this.value" style="width:100%;padding:7px;border:1px solid #D4C9B0;font-family:Inter,sans-serif;font-size:13px;background:#FAF8F3"></div>';
+
+    // Upload from computer
+    html+='<div style="margin-bottom:12px">';
+    html+='<button class="adm-btn adm-btn-dark" onclick="admUploadSocialsAlbumPhotos(\''+a.id+'\')">+ Upload Photo(s) from Computer</button>';
+    if((a.photos||[]).length>0){
+      html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;margin-top:10px">';
+      a.photos.forEach(function(url,pi){
+        html+='<div style="position:relative"><div style="width:100%;aspect-ratio:1;background:#f0ece2;overflow:hidden;border:1px solid #D4C9B0"><img src="'+url+'" style="width:100%;height:100%;object-fit:cover"></div><button onclick="removeSocialsAlbumPhoto(\''+a.id+'\','+pi+')" title="Remove" style="position:absolute;top:2px;right:2px;background:rgba(26,22,18,.75);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px;line-height:1">&#x2715;</button></div>';
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+
+    // Google Drive section
+    html+='<div style="background:#F5F0E8;border:1px solid #D4C9B0;padding:14px;margin-bottom:12px">';
+    html+='<div style="font-family:Inter,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#A39160;margin-bottom:10px;display:flex;align-items:center;gap:6px">';
+    html+='<svg width="12" height="12" viewBox="0 0 24 24" fill="#A39160"><path d="M6.28 3L1 12.5 6.28 22H17.72L23 12.5 17.72 3H6.28zm3.6 3h3.6L16 11.75H8L11.88 6zM4.5 13.25h15l-2.88 5H7.38L4.5 13.25z"/></svg>';
+    html+='Google Drive Integration</div>';
+    html+='<div style="margin-bottom:10px"><label style="font-family:Inter,sans-serif;font-size:11px;color:#5C5448;display:block;margin-bottom:4px">Google Drive Folder URL <span style="color:#8a7f70">(shared, view-only link)</span></label>';
+    html+='<input value="'+(a.driveUrl||'')+'" placeholder="https://drive.google.com/drive/folders/..." oninput="SEB_DATA.socialsAlbums['+i+'].driveUrl=this.value" style="width:100%;padding:7px;border:1px solid #D4C9B0;font-family:Inter,sans-serif;font-size:12px;background:white"></div>';
+    html+='<div><label style="font-family:Inter,sans-serif;font-size:11px;color:#5C5448;display:block;margin-bottom:4px">Add individual Google Drive photo links <span style="color:#8a7f70">(one per line — File &rarr; Get Link &rarr; Anyone with link)</span></label>';
+    html+='<textarea placeholder="https://drive.google.com/file/d/FILE_ID/view&#10;https://drive.google.com/file/d/FILE_ID/view&#10;..." oninput="updateSocialsAlbumDrivePhotos(\''+a.id+'\',this.value)" style="width:100%;height:90px;padding:7px;border:1px solid #D4C9B0;font-family:monospace;font-size:11px;background:white;resize:vertical">'+getSocialsAlbumDriveUrls(i)+'</textarea>';
+    if((a.drivePhotos||[]).length>0) html+='<div style="font-family:Inter,sans-serif;font-size:11px;color:#3B6D11;font-weight:600;margin-top:6px">&#x2713; '+(a.drivePhotos.length)+' Drive photo'+(a.drivePhotos.length!==1?'s':'')+' linked</div>';
+    html+='</div></div>';
+
+    html+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
+    html+='<button class="adm-btn adm-btn-dark" onclick="openSocialsAlbumView(\''+a.id+'\');saveAndCloseAdmin()" style="font-size:10px">Preview Album</button>';
+    html+='<button class="adm-btn adm-btn-outline" onclick="removeSocialsAlbum('+i+')" style="margin-left:auto">Delete Album</button>';
+    html+='</div></div>';
+  }
+  if(!SEB_DATA.socialsAlbums.length) html='<div style="font-size:13px;color:#8a7f70;padding:16px;background:white;border:1px solid #D4C9B0;text-align:center">No albums yet. Click + Add Album below.</div>';
   c.innerHTML=html;
 }
-function admUploadSocialsPhotos(){
+function getSocialsAlbumDriveUrls(i){
+  return (SEB_DATA.socialsAlbums[i].drivePhotos||[]).map(function(p){ return p.originalUrl||p.url; }).join('\n');
+}
+function updateSocialsAlbumDrivePhotos(id, text){
+  var a=SEB_DATA.socialsAlbums.find(function(x){ return x.id===id; }); if(!a) return;
+  var lines=text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  a.drivePhotos=lines.map(function(url){
+    return {url:convertDriveUrl(url), originalUrl:url, caption:'From Google Drive'};
+  });
+  renderSocialsAlbums(); saveSebData();
+}
+function admUploadSocialsAlbumPhotos(id){
+  var a=SEB_DATA.socialsAlbums.find(function(x){ return x.id===id; }); if(!a) return;
   var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
   inp.style.position='fixed'; inp.style.left='-9999px'; inp.style.opacity='0';
   document.body.appendChild(inp);
   inp.onchange=function(ev){
     var files=Array.prototype.slice.call(ev.target.files);
     if(!files.length){ inp.remove(); return; }
+    a.photos = a.photos || [];
     var remaining=files.length;
     files.forEach(function(file){
       compressImageFile(file, function(url){
-        if(url) SEB_DATA.socialsPhotos.push(url);
+        if(url) a.photos.push(url);
         remaining--;
-        if(remaining===0){ renderSocialsPhotos(); renderAdmSocialsPhotos(); saveSebData(); showSaved('sv-socialsphotos'); inp.remove(); }
+        if(remaining===0){ renderAdmSocialsAlbums(); renderSocialsAlbums(); saveSebData(); showSaved('sv-socialsalbums'); inp.remove(); }
       });
     });
   };
   inp.click();
 }
-function removeSocialsPhoto(i){ SEB_DATA.socialsPhotos.splice(i,1); renderSocialsPhotos(); renderAdmSocialsPhotos(); saveSebData(); }
+function removeSocialsAlbumPhoto(id, pi){
+  var a=SEB_DATA.socialsAlbums.find(function(x){ return x.id===id; }); if(!a) return;
+  a.photos.splice(pi,1);
+  renderAdmSocialsAlbums(); renderSocialsAlbums(); saveSebData();
+}
+function addAdmSocialsAlbum(){
+  SEB_DATA.socialsAlbums.push({id:'salbum'+Date.now(),name:'New Album',emoji:'📁',date:'',desc:'',photos:[],driveUrl:'',drivePhotos:[]});
+  renderAdmSocialsAlbums(); renderSocialsAlbums();
+}
+function removeSocialsAlbum(i){
+  if(confirm('Delete this album and all its photos?')){
+    SEB_DATA.socialsAlbums.splice(i,1);
+    renderAdmSocialsAlbums(); renderSocialsAlbums(); saveSebData();
+  }
+}
+function applySocialsAlbums(){ renderSocialsAlbums(); renderAdmSocialsAlbums(); saveSebData(); showSaved('sv-socialsalbums'); }
 function renderAdmShop(){
   var c=document.getElementById('admShopList'); if(!c) return;
   var html='';
@@ -2517,7 +2635,7 @@ document.addEventListener('DOMContentLoaded', function(){
     document.addEventListener('keydown', function(ev){
       if((ev.altKey && (ev.key==='a'||ev.key==='A'))) { ev.preventDefault(); openAdminLogin(); }
       if(ev.key==='Escape'){
-        closeAdminLogin(); closeCheckout(); closeLightbox(); closeModal(); closeVideoModal(); closeEventAlbum();
+        closeAdminLogin(); closeCheckout(); closeLightbox(); closeModal(); closeVideoModal(); closeEventAlbum(); closeSocialsAlbum();
         var panel=document.getElementById('adminPanel'); if(panel) panel.style.display='none';
       }
     });
