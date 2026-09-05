@@ -583,6 +583,15 @@ body.edit-mode .event-card-img .dl-badge{display:none}
             <span class="adm-saved" id="sv-gallery">&#x2713; Saved!</span>
           </div>
         </div>
+        <div class="adm-card" style="margin-top:20px">
+          <div class="adm-card-title">Socials Photo Album</div>
+          <div class="apanel-desc" style="margin-bottom:10px">A standalone photo album shown on the Socials page — not tied to any specific event. Upload as many photos as you want; students can click any one to download it.</div>
+          <div id="admSocialsPhotosList"></div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+            <button class="adm-btn adm-btn-dark" onclick="admUploadSocialsPhotos()">+ Add Photo(s)</button>
+            <span class="adm-saved" id="sv-socialsphotos">&#x2713; Saved!</span>
+          </div>
+        </div>
       </div>
 
       <!-- CRM TOOLKIT TAB -->
@@ -797,6 +806,13 @@ body.edit-mode .event-card-img .dl-badge{display:none}
     <div class="display-heading" style="font-size:26px" data-editable="gallery-heading">From Past Years</div>
     <p style="font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);margin-top:8px;margin-bottom:16px" data-editable="gallery-sub">Click anywhere to part take in the memory.</p>
     <div class="gallery-scroll-wrap"><div class="gallery-track" id="galleryGrid"></div></div>
+  </div>
+  <hr class="section-rule">
+  <div>
+    <div class="section-label">Photo Album</div>
+    <div class="display-heading" style="font-size:26px" data-editable="socialsphotos-heading">Socials Photos</div>
+    <p style="font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);margin-top:8px;margin-bottom:16px" data-editable="socialsphotos-sub">Browse photos from SEB socials. Click any photo to download it.</p>
+    <div class="album-photo-grid" id="socialsPhotosGrid"></div>
   </div>
 </div>
 
@@ -1030,6 +1046,7 @@ body.edit-mode .event-card-img .dl-badge{display:none}
     {name:'Spring Awards Banquet',date:'Apr 18',desc:'End-of-year celebration recognizing outstanding members.',photo:''}
   ],
   galleryPhotos: ['','','','','','','',''],
+  socialsPhotos: [],
   videos: [
     {title:'CRM Basics: Contacts & Accounts',dur:'8:24 - Introduction',url:'',fileData:''},
     {title:'Building Your Pipeline',dur:'12:10 - Intermediate',url:'',fileData:''},
@@ -1319,6 +1336,17 @@ function galleryItemClick(i, ev){
   var url = SEB_DATA.galleryPhotos[i];
   if(url) downloadImage(url, 'seb-memory-'+(i+1)+'.jpg', ev);
 }
+// ---- SOCIALS PHOTO ALBUM (standalone, not tied to a specific event) ----
+function renderSocialsPhotos() {
+  var g=document.getElementById('socialsPhotosGrid'); if(!g) return;
+  if(!SEB_DATA.socialsPhotos.length){
+    g.innerHTML='<div style="grid-column:1/-1;font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);padding:24px;text-align:center;background:var(--surface);border:1px solid var(--rule)">No photos in the album yet.</div>';
+    return;
+  }
+  g.innerHTML=SEB_DATA.socialsPhotos.map(function(url,i){
+    return '<div class="album-photo" onclick="downloadImage(\''+url+'\',\'seb-socials-'+(i+1)+'.jpg\',event)" title="Click to download"><img src="'+url+'"></div>';
+  }).join('');
+}
 function renderNLGraphics() {
   var g=document.getElementById('nlGraphicsGrid'); if(!g) return;
   if(!SEB_DATA.newsletterGraphics.length){
@@ -1526,7 +1554,7 @@ function renderAlbums() {
 }
 function renderAll() {
   renderTicker(); renderEB(); renderUpcoming(); renderSocialEvents();
-  renderGallery(); renderVideos(); renderResources(); renderNLDate(); renderShop(); renderSlap(); renderNLGraphics();
+  renderGallery(); renderVideos(); renderResources(); renderNLDate(); renderShop(); renderSlap(); renderNLGraphics(); renderSocialsPhotos();
 }
 
 // ============================================================
@@ -1843,7 +1871,7 @@ function showAdmTab(btn, panelId) {
   if(body) body.scrollTop=0;
   if(panelId==='adm-home')     { renderAdmUpcoming(); renderAdmEB(); loadAdminInstaCode(); loadHeroFields(); renderAdmNLGraphics(); }
   if(panelId==='adm-orders')   renderAdmOrders();
-  if(panelId==='adm-events')   { renderAdmEvents(); renderAdmGallery(); }
+  if(panelId==='adm-events')   { renderAdmEvents(); renderAdmGallery(); renderAdmSocialsPhotos(); }
   if(panelId==='adm-shop')     renderAdmShop();
   if(panelId==='adm-albums')   renderAdmAlbums();
   if(panelId==='adm-crm')      { renderAdmVideos(); renderAdmResources(); }
@@ -2018,6 +2046,40 @@ function admUploadGalleryPhotos(){
   inp.click();
 }
 function removeGalleryPhoto(i){ SEB_DATA.galleryPhotos.splice(i,1); renderGallery(); renderAdmGallery(); saveSebData(); }
+
+// ---- SOCIALS PHOTO ALBUM ADMIN ----
+function renderAdmSocialsPhotos(){
+  var c=document.getElementById('admSocialsPhotosList'); if(!c) return;
+  if(!SEB_DATA.socialsPhotos.length){ c.innerHTML='<div style="font-size:13px;color:#8a7f70;padding:12px;background:white;border:1px solid #D4C9B0">No photos uploaded yet.</div>'; return; }
+  var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px">';
+  SEB_DATA.socialsPhotos.forEach(function(url,i){
+    html+='<div style="position:relative">';
+    html+='<div style="width:100%;aspect-ratio:1;background:#f0ece2;overflow:hidden;border:1px solid #D4C9B0"><img src="'+url+'" style="width:100%;height:100%;object-fit:cover"></div>';
+    html+='<button onclick="removeSocialsPhoto('+i+')" title="Remove" style="position:absolute;top:4px;right:4px;background:rgba(26,22,18,.75);color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1">&#x2715;</button>';
+    html+='</div>';
+  });
+  html+='</div>';
+  c.innerHTML=html;
+}
+function admUploadSocialsPhotos(){
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+  inp.style.position='fixed'; inp.style.left='-9999px'; inp.style.opacity='0';
+  document.body.appendChild(inp);
+  inp.onchange=function(ev){
+    var files=Array.prototype.slice.call(ev.target.files);
+    if(!files.length){ inp.remove(); return; }
+    var remaining=files.length;
+    files.forEach(function(file){
+      compressImageFile(file, function(url){
+        if(url) SEB_DATA.socialsPhotos.push(url);
+        remaining--;
+        if(remaining===0){ renderSocialsPhotos(); renderAdmSocialsPhotos(); saveSebData(); showSaved('sv-socialsphotos'); inp.remove(); }
+      });
+    });
+  };
+  inp.click();
+}
+function removeSocialsPhoto(i){ SEB_DATA.socialsPhotos.splice(i,1); renderSocialsPhotos(); renderAdmSocialsPhotos(); saveSebData(); }
 function renderAdmShop(){
   var c=document.getElementById('admShopList'); if(!c) return;
   var html='';
