@@ -2277,20 +2277,24 @@ function convertDriveUrl(url){
 }
 function saveAdmAlbum(i){
   renderAlbums();
+  saveSebData();
   showToast('Album saved!');
 }
 function addAdmAlbum(){
-  SEB_ALBUMS.push({id:'album'+Date.now(),name:'New Album',emoji:'📸',date:'2026',photos:[],driveUrl:'',drivePhotos:[],desc:''});
+  SEB_ALBUMS.push({id:'album'+Date.now(),name:'New Album',emoji:'📸',date:'2026',photos:[],driveUrl:'',drivePhotos:[],desc:'',allowUpload:true});
   renderAdmAlbums();
+  renderAlbums();
+  saveSebData();
 }
 function removeAdmAlbum(i){
   if(confirm('Delete this album? All student photos in it will be removed.')) {
     SEB_ALBUMS.splice(i,1);
     renderAdmAlbums();
     renderAlbums();
+    saveSebData();
   }
 }
-function applyAlbums(){ renderAlbums(); renderAdmAlbums(); showSaved('sv-albums'); }
+function applyAlbums(){ renderAlbums(); renderAdmAlbums(); saveSebData(); showSaved('sv-albums'); }
 function applySponsors(){
   var el=document.getElementById('admSponsors'); if(!el) return;
   SEB_DATA.sponsors=el.value.split('\n').map(function(s){ return s.trim(); }).filter(Boolean);
