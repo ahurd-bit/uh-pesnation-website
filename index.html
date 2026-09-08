@@ -2310,15 +2310,22 @@ function renderAdmVideos(){
 }
 function uploadVideoFile(idx, input){
   var file=input.files[0]; if(!file) return;
-  var reader=new FileReader();
-  reader.onload=function(e){
-    SEB_DATA.videos[idx].fileData=e.target.result;
-    SEB_DATA.videos[idx].url='';
+  showToast('Uploading video… this may take a moment for larger files.');
+  var path = 'videos/' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + (file.name.split('.').pop()||'mp4');
+  var ref = fbStorage.ref().child(path);
+  ref.put(file).then(function(snapshot){
+    return snapshot.ref.getDownloadURL();
+  }).then(function(url){
+    SEB_DATA.videos[idx].fileData = url;
+    SEB_DATA.videos[idx].url = '';
     renderVideos();
     renderAdmVideos();
     saveSebData();
-  };
-  reader.readAsDataURL(file);
+    showToast('Video uploaded!');
+  }).catch(function(e){
+    console.error('video upload failed:', e);
+    showToast('⚠️ Video upload failed — check your internet connection and try again.');
+  });
 }
 function clearVideo(idx){
   SEB_DATA.videos[idx].url='';
