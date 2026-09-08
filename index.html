@@ -1068,12 +1068,12 @@ body.edit-mode .eb-photo-wrap:hover .eb-photo-overlay{display:flex}
 };/*SEB_DATA_END*/
 
 /*SEB_ALBUMS_START*/var SEB_ALBUMS = [
-  {id:'headshots',   name:'Headshots 2025-26',     emoji:'📸', date:'Fall 2025',   photos:[], driveUrl:'', drivePhotos:[], desc:'Official headshots for all SEB members and sales program students.', allowUpload:false, featured:true},
+  {id:'headshots',   name:'Headshots 2026-27',     emoji:'📸', date:'Fall 2025',   photos:[], driveUrl:'', drivePhotos:[], desc:'Official headshots for all SEB members and sales program students. Uploaded by SEB admins only.', allowUpload:false, featured:true},
   {id:'golf2026',    name:'Golf Tournament 2026',   emoji:'⛳', date:'Spring 2026', photos:[], driveUrl:'', drivePhotos:[], desc:'Share your photos from the annual SEB golf tournament.', allowUpload:true,  featured:false},
   {id:'socials',     name:'Socials',                emoji:'🎉', date:'2025-2026',   photos:[], driveUrl:'', drivePhotos:[], desc:'Share your photos from SEB social events throughout the year.', allowUpload:true,  featured:false},
-  {id:'fallsoc2025', name:'Fall Social 2025',       emoji:'🍂', date:'Fall 2025',   photos:[], driveUrl:'', drivePhotos:[], desc:'Photos from our Fall 2025 social events.', allowUpload:false, featured:false},
-  {id:'luncheon',    name:'Networking Luncheon',    emoji:'🍽', date:'Spring 2026', photos:[], driveUrl:'', drivePhotos:[], desc:'Photos from the networking luncheon.', allowUpload:false, featured:false},
-  {id:'roundtable',  name:'Partner Roundtable',     emoji:'🤝', date:'Spring 2026', photos:[], driveUrl:'', drivePhotos:[], desc:'Photos from our partner roundtable sessions.', allowUpload:false, featured:false}
+  {id:'fallsoc2025', name:'Fall Social 2025',       emoji:'🍂', date:'Fall 2025',   photos:[], driveUrl:'', drivePhotos:[], desc:'Photos from our Fall 2025 social events.', allowUpload:true, featured:false},
+  {id:'luncheon',    name:'Networking Luncheon',    emoji:'🍽', date:'Spring 2026', photos:[], driveUrl:'', drivePhotos:[], desc:'Photos from the networking luncheon.', allowUpload:true, featured:false},
+  {id:'roundtable',  name:'Partner Roundtable',     emoji:'🤝', date:'Spring 2026', photos:[], driveUrl:'', drivePhotos:[], desc:'Photos from our partner roundtable sessions.', allowUpload:true, featured:false}
 ];/*SEB_ALBUMS_END*/
 
 // ============================================================
@@ -2190,6 +2190,24 @@ function renderAdmAlbums(){
     html+='<div style="margin-bottom:12px"><label style="font-family:Inter,sans-serif;font-size:11px;color:#5C5448;display:block;margin-bottom:4px">Description (shown under album name)</label>';
     html+='<input value="'+(a.desc||'').replace(/"/g,'&quot;')+'" placeholder="e.g. Official headshots for all sales program students." oninput="SEB_ALBUMS['+i+'].desc=this.value" style="width:100%;padding:7px;border:1px solid #D4C9B0;font-family:Inter,sans-serif;font-size:13px;background:#FAF8F3"></div>';
 
+    // Allow user uploads toggle
+    html+='<div style="background:#F5F0E8;border:1px solid #D4C9B0;padding:12px;margin-bottom:12px;display:flex;align-items:center;gap:10px">';
+    html+='<input type="checkbox" id="albumAllowUpload'+i+'" '+(a.allowUpload?'checked':'')+' onchange="toggleAlbumAllowUpload('+i+',this.checked)" style="width:16px;height:16px">';
+    html+='<label for="albumAllowUpload'+i+'" style="font-family:Inter,sans-serif;font-size:12px;color:#1A1612;cursor:pointer">Allow students/visitors to upload their own photos to this album'+(a.allowUpload?'':' <strong>(currently OFF — admin-only)</strong>')+'</label>';
+    html+='</div>';
+
+    // Admin photo upload from computer
+    html+='<div style="margin-bottom:12px">';
+    html+='<button class="adm-btn adm-btn-dark" onclick="admUploadAlbumPhotos(\''+a.id+'\')">+ Upload Photo(s) from Computer</button>';
+    if((a.photos||[]).length>0){
+      html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px;margin-top:10px">';
+      a.photos.forEach(function(url,pi){
+        html+='<div style="position:relative"><div style="width:100%;aspect-ratio:1;background:#f0ece2;overflow:hidden;border:1px solid #D4C9B0"><img src="'+url+'" style="width:100%;height:100%;object-fit:cover"></div><button onclick="removeAdmAlbumPhoto(\''+a.id+'\','+pi+')" title="Remove" style="position:absolute;top:2px;right:2px;background:rgba(26,22,18,.75);color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px;line-height:1">&#x2715;</button></div>';
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+
     // Google Drive section
     html+='<div style="background:#F5F0E8;border:1px solid #D4C9B0;padding:14px;margin-bottom:12px">';
     html+='<div style="font-family:Inter,sans-serif;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#A39160;margin-bottom:10px;display:flex;align-items:center;gap:6px">';
@@ -2205,12 +2223,42 @@ function renderAdmAlbums(){
 
     html+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">';
     html+='<button class="adm-btn adm-btn-red" onclick="saveAdmAlbum('+i+')">Save Album</button>';
-    if((a.drivePhotos||[]).length>0) html+='<button class="adm-btn adm-btn-dark" data-aid="'+a.id+'" onclick="openAlbum(this.dataset.aid);saveAndCloseAdmin()" style="font-size:10px">Preview Album</button>';
+    html+='<button class="adm-btn adm-btn-dark" data-aid="'+a.id+'" onclick="openAlbum(this.dataset.aid);saveAndCloseAdmin()" style="font-size:10px">Preview Album</button>';
     html+='<button class="adm-btn adm-btn-outline" onclick="removeAdmAlbum('+i+')" style="margin-left:auto">Delete Album</button>';
     html+='</div></div>';
   }
   if(!SEB_ALBUMS.length) html='<div style="font-size:13px;color:#8a7f70;padding:16px;background:white;border:1px solid #D4C9B0;text-align:center">No albums yet. Click + Add Album below.</div>';
   c.innerHTML=html;
+}
+function toggleAlbumAllowUpload(i, checked){
+  SEB_ALBUMS[i].allowUpload = checked;
+  saveSebData();
+  renderAdmAlbums();
+}
+function admUploadAlbumPhotos(id){
+  var a=SEB_ALBUMS.find(function(x){ return x.id===id; }); if(!a) return;
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+  inp.style.position='fixed'; inp.style.left='-9999px'; inp.style.opacity='0';
+  document.body.appendChild(inp);
+  inp.onchange=function(ev){
+    var files=Array.prototype.slice.call(ev.target.files);
+    if(!files.length){ inp.remove(); return; }
+    a.photos = a.photos || [];
+    var remaining=files.length;
+    files.forEach(function(file){
+      compressImageFile(file, function(url){
+        if(url) a.photos.push(url);
+        remaining--;
+        if(remaining===0){ renderAdmAlbums(); saveSebData(); showToast(files.length+' photo'+(files.length!==1?'s':'')+' uploaded to '+a.name+'!'); inp.remove(); }
+      });
+    });
+  };
+  inp.click();
+}
+function removeAdmAlbumPhoto(id, pi){
+  var a=SEB_ALBUMS.find(function(x){ return x.id===id; }); if(!a) return;
+  a.photos.splice(pi,1);
+  renderAdmAlbums(); saveSebData();
 }
 function getDrivePhotoUrls(i){
   return (SEB_ALBUMS[i].drivePhotos||[]).map(function(p){ return p.originalUrl||p.url; }).join('\n');
